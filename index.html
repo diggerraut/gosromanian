@@ -3,17 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Романовская Федерация | Online Portal</title>
+    <title>Романовская Федерация | Государственный портал</title>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     
     <style>
         :root {
             --primary: #007bff; --accent: #00d4ff; --bg-dark: #0a0b10;
-            --glass: rgba(255, 255, 255, 0.1); --text: #ffffff; --gov-gold: #ffd700; --danger: #ff4d4d;
+            --glass: rgba(255, 255, 255, 0.1); --text: #ffffff; 
+            --gov-gold: #ffd700; --danger: #ff4d4d;
         }
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; scroll-behavior: smooth; }
-        body { background: var(--bg-dark); color: var(--text); min-height: 100vh; transition: background 0.5s ease; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+        body { background: var(--bg-dark); color: var(--text); min-height: 100vh; transition: background 0.5s ease; overflow-x: hidden; }
         
         /* Ивент: Хлопушки */
         @keyframes partyBg {
@@ -36,16 +37,20 @@
         .container { padding: 40px 10%; }
         .section-title { margin: 40px 0 20px; color: var(--accent); border-left: 4px solid var(--accent); padding-left: 15px; }
         .card { background: var(--glass); padding: 25px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(10px); margin-bottom: 20px; }
+        
         input, textarea, select { width: 100%; padding: 12px; margin: 10px 0; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.2); color: white; border-radius: 8px; outline: none; }
         .btn { background: var(--primary); color: white; border: none; padding: 12px 25px; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.3s; }
         .btn:disabled { background: #444; cursor: not-allowed; opacity: 0.5; }
 
+        /* Панель (F4) */
         #gov-panel {
             display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
             width: 90%; max-width: 600px; background: rgba(10, 11, 16, 0.98);
             border: 2px solid var(--gov-gold); padding: 30px; border-radius: 20px; z-index: 9999;
             box-shadow: 0 0 100px rgba(0,0,0,1); max-height: 80vh; overflow-y: auto;
         }
+
+        .complaint-item { background: rgba(255,0,0,0.1); padding: 10px; border-radius: 5px; margin-top: 10px; border: 1px solid var(--danger); font-size: 0.9rem; }
         .emoji { position: fixed; top: -50px; z-index: 9998; pointer-events: none; animation: fall linear forwards; }
         @keyframes fall { to { transform: translateY(110vh) rotate(360deg); } }
     </style>
@@ -61,10 +66,10 @@
 
     <div class="container">
         <h2 class="section-title">📢 Государственные Сообщения</h2>
-        <div id="gov-messages" class="feed"></div>
+        <div id="gov-messages"></div>
 
         <h2 class="section-title">🌍 Новости и Мир</h2>
-        <div id="public-feed" class="feed"></div>
+        <div id="public-feed"></div>
 
         <h2 class="section-title">🛒 Приобретение территорий</h2>
         <div class="card">
@@ -74,17 +79,16 @@
                 <option value="край" data-price="249">Край (249 руб)</option>
             </select>
             <input type="text" id="buy-name" placeholder="Название">
-            <input type="text" id="buy-loc" placeholder="Местоположение">
-            <div style="margin: 10px 0;">Цена: <span id="total-price" style="color:var(--gov-gold)">49 руб</span></div>
             <button class="btn" style="background: #28a745" onclick="generateBuyCommand()">Сформировать заказ</button>
-            <p id="buy-result" style="display:none; margin-top:10px; font-family:monospace; background:rgba(0,0,0,0.5); padding:10px;"></p>
+            <p id="buy-result" style="display:none; margin-top:10px; font-family:monospace; background:rgba(0,0,0,0.5); padding:10px; word-break: break-all;"></p>
+            <p style="margin-top:10px; font-size: 0.8rem;">ТГ: @roman_egoroff</p>
         </div>
 
         <h2 class="section-title">⚖️ Панель жалоб</h2>
         <div class="card">
-            <textarea id="complaint-text" rows="5" placeholder="Опишите проблему (минимум 125 букв)..." oninput="checkComplaint()"></textarea>
-            <div id="char-count">0 / 125</div>
-            <button id="send-complaint" class="btn" style="background:var(--danger); margin-top:10px;" disabled onclick="submitComplaint()">Отправить в базу</button>
+            <textarea id="complaint-text" rows="5" placeholder="Минимум 125 букв..." oninput="checkComplaint()"></textarea>
+            <div id="char-count" style="font-size: 0.8rem; margin-bottom: 10px;">0 / 125</div>
+            <button id="send-complaint" class="btn" style="background:var(--danger);" disabled onclick="submitComplaint()">Отправить Правителю</button>
         </div>
     </div>
 
@@ -99,113 +103,124 @@
         <textarea id="pub-content" rows="4" placeholder="Текст..."></textarea>
         <button class="btn" style="width:100%; background:var(--gov-gold); color:black;" onclick="dbPublish()">ОПУБЛИКОВАТЬ ДЛЯ ВСЕХ</button>
         
-        <h3 style="margin-top:20px;">Ивенты</h3>
-        <button class="btn" style="width:100%; margin-bottom:5px;" onclick="dbToggleEvent('emoji')">Смайлики (Для всех)</button>
-        <button class="btn" style="width:100%;" onclick="dbToggleEvent('party')">Хлопушки (Для всех)</button>
-        <button class="btn" style="width:100%; margin-top:10px; background:#444;" onclick="closePanel()">ЗАКРЫТЬ</button>
+        <h3 style="margin-top:20px;">Управление страной</h3>
+        <button class="btn" style="width:100%; margin-bottom:5px;" onclick="dbToggleEvent('emoji')">Смайлики (Вкл/Выкл)</button>
+        <button class="btn" style="width:100%; margin-bottom:5px;" onclick="dbToggleEvent('party')">Хлопушки (Вкл/Выкл)</button>
+        <button class="btn" style="width:100%; background:#555;" onclick="loadComplaints()">ПРОЧИТАТЬ ЖАЛОБЫ</button>
+        
+        <div id="complaints-list" style="margin-top:15px; max-height: 200px; overflow-y: auto;"></div>
+
+        <button class="btn" style="width:100%; margin-top:20px; background:#444;" onclick="closePanel()">ЗАКРЫТЬ (ESC)</button>
     </div>
 
     <script>
-        // --- КОНФИГУРАЦИЯ FIREBASE ---
+        // Данные Firebase
         const firebaseConfig = {
-  apiKey: "AIzaSyDo8zWjPZ1M3gDJob_BxhBoASldDzSpVSU",
-  authDomain: "siteromania-7d517.firebaseapp.com",
-  projectId: "siteromania-7d517",
-  storageBucket: "siteromania-7d517.firebasestorage.app",
-  messagingSenderId: "911808999395",
-  appId: "1:911808999395:web:6ef16d0a1dc8e508d87ad6",
-  measurementId: "G-E93VB9J6R3"
-};
+            apiKey: "AIzaSyDo8zWjPZ1M3gDJob_BxhBoASldDzSpVSU",
+            authDomain: "siteromania-7d517.firebaseapp.com",
+            projectId: "siteromania-7d517",
+            storageBucket: "siteromania-7d517.firebasestorage.app",
+            messagingSenderId: "911808999395",
+            appId: "1:911808999395:web:6ef16d0a1dc8e508d87ad6",
+            measurementId: "G-E93VB9J6R3"
         };
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
 
-        // --- ЛОГИКА ПАНЕЛИ ---
         let isGov = false;
+
+        // Фикс входа в панель
         window.addEventListener('keydown', (e) => {
             if (e.key === 'F4') {
-                let pass = prompt("Имя Правителя:");
-                if (pass === "Грубан Виндин") { isGov = true; document.getElementById('gov-panel').style.display = 'block'; }
+                const name = prompt("Введите имя Правителя:");
+                if (name === "Грубан Виндин") {
+                    isGov = true;
+                    document.getElementById('gov-panel').style.display = 'block';
+                } else if (name !== null) {
+                    alert("Доступ запрещен.");
+                }
             }
+            if (e.key === 'Escape') closePanel();
         });
+
         function closePanel() { document.getElementById('gov-panel').style.display = 'none'; }
 
-        // --- СИНХРОНИЗАЦИЯ С БАЗОЙ ---
-
-        // Загрузка постов
-        database.ref('posts').on('child_added', (snapshot) => {
-            const data = snapshot.val();
-            const html = `<div class="card"><h3>${data.title}</h3><p>${data.content}</p></div>`;
-            if(data.type === 'msg') document.getElementById('gov-messages').insertAdjacentHTML('afterbegin', html);
-            else document.getElementById('public-feed').insertAdjacentHTML('afterbegin', html);
+        // Загрузка данных
+        database.ref('posts').on('child_added', (snap) => {
+            const d = snap.val();
+            const html = `<div class="card"><h3>${d.title}</h3><p>${d.content}</p></div>`;
+            const container = d.type === 'msg' ? 'gov-messages' : 'public-feed';
+            document.getElementById(container).insertAdjacentHTML('afterbegin', html);
         });
 
-        // Закрепленный пост
-        database.ref('settings/pinned').on('value', (snapshot) => {
-            const val = snapshot.val();
+        database.ref('settings/pinned').on('value', (snap) => {
             const el = document.getElementById('pinned-post');
-            if(val) { el.innerText = val; el.style.display = 'block'; }
+            if(snap.val()) { el.innerText = snap.val(); el.style.display = 'block'; }
             else { el.style.display = 'none'; }
         });
 
-        // Ивенты для всех
-        database.ref('events/party').on('value', (snap) => {
-            document.body.classList.toggle('party-mode', snap.val() === true);
-        });
-
-        let emojiInt;
-        database.ref('events/emoji').on('value', (snap) => {
-            if(snap.val()) {
-                emojiInt = setInterval(() => {
+        // Ивенты
+        database.ref('events/party').on('value', (s) => document.body.classList.toggle('party-mode', s.val() === true));
+        let emInt;
+        database.ref('events/emoji').on('value', (s) => {
+            clearInterval(emInt);
+            if(s.val()) {
+                emInt = setInterval(() => {
                     const e = document.createElement('div'); e.className = 'emoji'; e.innerText = '🇷🇴';
                     e.style.left = Math.random() * 100 + "vw"; e.style.animationDuration = "3s";
                     document.body.appendChild(e); setTimeout(() => e.remove(), 3000);
                 }, 300);
-            } else { clearInterval(emojiInt); }
+            }
         });
 
-        // --- ФУНКЦИИ ЗАПИСИ ---
+        // Функции
         function dbPublish() {
             if(!isGov) return;
-            const type = document.getElementById('pub-type').value;
+            const t = document.getElementById('pub-type').value;
             const title = document.getElementById('pub-title').value;
-            const content = document.getElementById('pub-content').value;
-            if(type === 'pin') database.ref('settings/pinned').set(content);
-            else database.ref('posts').push({ type, title, content });
-            alert("Успешно опубликовано в общую базу!");
+            const cont = document.getElementById('pub-content').value;
+            if(t === 'pin') database.ref('settings/pinned').set(cont);
+            else database.ref('posts').push({ type: t, title, content: cont });
+            alert("Опубликовано!");
         }
 
-        function dbToggleEvent(evType) {
+        function dbToggleEvent(type) {
             if(!isGov) return;
-            const ref = database.ref('events/' + evType);
+            const ref = database.ref('events/' + type);
             ref.once('value', (s) => ref.set(!s.val()));
         }
 
         function submitComplaint() {
-            const text = document.getElementById('complaint-text').value;
-            database.ref('complaints').push({ text, date: new Date().toLocaleString() });
-            alert("Жалоба сохранена в базе данных страны.");
+            const txt = document.getElementById('complaint-text').value;
+            database.ref('complaints').push({ text: txt, time: new Date().toLocaleString() });
+            alert("Ваша жалоба отправлена Г. Виндину.");
             document.getElementById('complaint-text').value = "";
+            checkComplaint();
         }
 
-        // Вспомогательное
+        function loadComplaints() {
+            const list = document.getElementById('complaints-list');
+            list.innerHTML = "Загрузка...";
+            database.ref('complaints').limitToLast(10).once('value', (s) => {
+                list.innerHTML = "";
+                s.forEach((child) => {
+                    list.insertAdjacentHTML('afterbegin', `<div class="complaint-item"><strong>${child.val().time}</strong><br>${child.val().text}</div>`);
+                });
+            });
+        }
+
         function checkComplaint() {
-            const val = document.getElementById('complaint-text').value;
-            document.getElementById('char-count').innerText = `${val.length} / 125`;
-            document.getElementById('send-complaint').disabled = val.length < 125;
-        }
-
-        function updatePrice() {
-            const sel = document.getElementById('buy-type');
-            document.getElementById('total-price').innerText = sel.options[sel.selectedIndex].getAttribute('data-price') + " руб";
+            const v = document.getElementById('complaint-text').value;
+            document.getElementById('char-count').innerText = `${v.length} / 125`;
+            document.getElementById('send-complaint').disabled = v.length < 125;
         }
 
         function generateBuyCommand() {
-            const type = document.getElementById('buy-type').value;
-            const name = document.getElementById('buy-name').value;
-            const cmd = `!buy${type} ; {${name}}`;
+            const t = document.getElementById('buy-type').value;
+            const n = document.getElementById('buy-name').value;
+            if(!n) return alert("Введите название!");
             const res = document.getElementById('buy-result');
-            res.innerText = "Отправьте @roman_egoroff: " + cmd;
+            res.innerText = `Напишите @roman_egoroff: !buy${t} ; {${n}}`;
             res.style.display = "block";
         }
     </script>
