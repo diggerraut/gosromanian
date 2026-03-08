@@ -3,28 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Романовская Федерация | Государственный портал</title>
+    <title>Романовская Федерация | Online Portal</title>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    
     <style>
         :root {
-            --primary: #007bff;
-            --accent: #00d4ff;
-            --bg-dark: #0a0b10;
-            --glass: rgba(255, 255, 255, 0.1);
-            --text: #ffffff;
-            --gov-gold: #ffd700;
-            --danger: #ff4d4d;
+            --primary: #007bff; --accent: #00d4ff; --bg-dark: #0a0b10;
+            --glass: rgba(255, 255, 255, 0.1); --text: #ffffff; --gov-gold: #ffd700; --danger: #ff4d4d;
         }
-
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; scroll-behavior: smooth; }
-
         body { background: var(--bg-dark); color: var(--text); min-height: 100vh; transition: background 0.5s ease; }
-
+        
         /* Ивент: Хлопушки */
         @keyframes partyBg {
             0% { background-color: #0000ff; } 25% { background-color: #ff69b4; }
             50% { background-color: #ff0000; } 75% { background-color: #00ffff; } 100% { background-color: #0000ff; }
         }
-        body.party-mode { animation: partyBg 2s infinite; }
+        body.party-mode { animation: partyBg 2s infinite !important; }
 
         #pinned-post {
             display: none; background: linear-gradient(90deg, #ff416c, #ff4b2b);
@@ -39,37 +35,17 @@
 
         .container { padding: 40px 10%; }
         .section-title { margin: 40px 0 20px; color: var(--accent); border-left: 4px solid var(--accent); padding-left: 15px; }
-
-        .card {
-            background: var(--glass); padding: 25px; border-radius: 15px;
-            border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(10px); margin-bottom: 20px;
-        }
-
-        /* Формы */
-        input, textarea, select {
-            width: 100%; padding: 12px; margin: 10px 0;
-            background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.2);
-            color: white; border-radius: 8px; outline: none;
-        }
-
-        .btn {
-            background: var(--primary); color: white; border: none; padding: 12px 25px;
-            border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.3s;
-        }
+        .card { background: var(--glass); padding: 25px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(10px); margin-bottom: 20px; }
+        input, textarea, select { width: 100%; padding: 12px; margin: 10px 0; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.2); color: white; border-radius: 8px; outline: none; }
+        .btn { background: var(--primary); color: white; border: none; padding: 12px 25px; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.3s; }
         .btn:disabled { background: #444; cursor: not-allowed; opacity: 0.5; }
 
-        /* Государственная панель (F4) */
         #gov-panel {
             display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
             width: 90%; max-width: 600px; background: rgba(10, 11, 16, 0.98);
             border: 2px solid var(--gov-gold); padding: 30px; border-radius: 20px; z-index: 9999;
             box-shadow: 0 0 100px rgba(0,0,0,1); max-height: 80vh; overflow-y: auto;
         }
-
-        /* Рынок территорий */
-        .price-tag { color: var(--gov-gold); font-weight: bold; font-size: 1.1rem; }
-        .tg-link { color: var(--accent); text-decoration: none; font-weight: bold; border-bottom: 1px dashed; }
-
         .emoji { position: fixed; top: -50px; z-index: 9998; pointer-events: none; animation: fall linear forwards; }
         @keyframes fall { to { transform: translateY(110vh) rotate(360deg); } }
     </style>
@@ -84,42 +60,31 @@
     </nav>
 
     <div class="container">
-        <h2 class="section-title">Государственные Сообщения</h2>
-        <div id="gov-messages" class="feed">
-            <div class="card">Приветствуем всех граждан Романии. Здесь публикуются указы Г. Виндина.</div>
-        </div>
+        <h2 class="section-title">📢 Государственные Сообщения</h2>
+        <div id="gov-messages" class="feed"></div>
 
-        <div id="public-feed"></div>
+        <h2 class="section-title">🌍 Новости и Мир</h2>
+        <div id="public-feed" class="feed"></div>
 
         <h2 class="section-title">🛒 Приобретение территорий</h2>
         <div class="card">
-            <p style="margin-bottom: 15px;">Выберите тип территории и укажите название для оформления заявки.</p>
             <select id="buy-type" onchange="updatePrice()">
                 <option value="район" data-price="49">Район (49 руб)</option>
                 <option value="область" data-price="149">Область (149 руб)</option>
                 <option value="край" data-price="249">Край (249 руб)</option>
             </select>
-            <input type="text" id="buy-name" placeholder="Введите название (например: Центральный или Солнечная)">
-            <input type="text" id="buy-loc" placeholder="Точное местоположение (координаты или описание)">
-            
-            <div style="margin: 15px 0;">
-                Итого к оплате: <span id="total-price" class="price-tag">49 руб</span>
-            </div>
-            
-            <p id="buy-result" style="background: rgba(0,0,0,0.3); padding: 10px; border-radius: 5px; display: none; font-family: monospace;"></p>
-            
-            <button class="btn" onclick="generateBuyCommand()" style="background: #28a745; margin-top: 10px;">Сформировать заказ</button>
-            <p style="margin-top: 15px; font-size: 0.9rem;">
-                Для оплаты напишите в ТГ: <a href="https://t.me/roman_egoroff" class="tg-link">@roman_egoroff</a>
-            </p>
+            <input type="text" id="buy-name" placeholder="Название">
+            <input type="text" id="buy-loc" placeholder="Местоположение">
+            <div style="margin: 10px 0;">Цена: <span id="total-price" style="color:var(--gov-gold)">49 руб</span></div>
+            <button class="btn" style="background: #28a745" onclick="generateBuyCommand()">Сформировать заказ</button>
+            <p id="buy-result" style="display:none; margin-top:10px; font-family:monospace; background:rgba(0,0,0,0.5); padding:10px;"></p>
         </div>
 
         <h2 class="section-title">⚖️ Панель жалоб</h2>
-        <div class="card" style="border-left: 5px solid var(--danger);">
-            <p>Есть претензии к стране? Опишите их максимально подробно.</p>
-            <textarea id="complaint-text" rows="5" placeholder="Минимум 125 символов..." oninput="checkComplaint()"></textarea>
-            <div id="char-count" style="font-size: 0.8rem; color: #aaa;">Символов: 0 / 125</div>
-            <button id="send-complaint" class="btn" style="background: var(--danger); margin-top: 10px;" disabled onclick="sendComplaint()">Отправить жалобу</button>
+        <div class="card">
+            <textarea id="complaint-text" rows="5" placeholder="Опишите проблему (минимум 125 букв)..." oninput="checkComplaint()"></textarea>
+            <div id="char-count">0 / 125</div>
+            <button id="send-complaint" class="btn" style="background:var(--danger); margin-top:10px;" disabled onclick="submitComplaint()">Отправить в базу</button>
         </div>
     </div>
 
@@ -127,105 +92,121 @@
         <h2>🏛 ПАНЕЛЬ ПРАВИТЕЛЯ</h2>
         <select id="pub-type">
             <option value="msg">Гос. Сообщение</option>
-            <option value="news">Новости</option>
-            <option value="event">Мероприятие</option>
+            <option value="news">Новость</option>
             <option value="pin">Закрепленный пост</option>
         </select>
         <input type="text" id="pub-title" placeholder="Заголовок">
-        <input type="text" id="pub-meta" placeholder="Мета-информация (Место/Дата)">
-        <textarea id="pub-content" rows="4" placeholder="Текст сообщения..."></textarea>
-        <button class="btn" style="width:100%; background: var(--gov-gold); color: black;" onclick="publish()">ОПУБЛИКОВАТЬ</button>
+        <textarea id="pub-content" rows="4" placeholder="Текст..."></textarea>
+        <button class="btn" style="width:100%; background:var(--gov-gold); color:black;" onclick="dbPublish()">ОПУБЛИКОВАТЬ ДЛЯ ВСЕХ</button>
         
-        <h3 style="margin-top:20px; color: var(--gov-gold);">Ивенты</h3>
-        <button class="btn" style="width:100%; margin-bottom:5px;" onclick="toggleEmoji()">Падающие Смайлики</button>
-        <button class="btn" style="width:100%;" onclick="toggleParty()">Хлопушки (Фон)</button>
-        <button class="btn" style="width:100%; margin-top:15px; background:#444;" onclick="closePanel()">ЗАКРЫТЬ</button>
+        <h3 style="margin-top:20px;">Ивенты</h3>
+        <button class="btn" style="width:100%; margin-bottom:5px;" onclick="dbToggleEvent('emoji')">Смайлики (Для всех)</button>
+        <button class="btn" style="width:100%;" onclick="dbToggleEvent('party')">Хлопушки (Для всех)</button>
+        <button class="btn" style="width:100%; margin-top:10px; background:#444;" onclick="closePanel()">ЗАКРЫТЬ</button>
     </div>
 
     <script>
-        let isGov = false;
-        let emojiInterval;
+        // --- КОНФИГУРАЦИЯ FIREBASE ---
+        const firebaseConfig = {
+  apiKey: "AIzaSyDo8zWjPZ1M3gDJob_BxhBoASldDzSpVSU",
+  authDomain: "siteromania-7d517.firebaseapp.com",
+  projectId: "siteromania-7d517",
+  storageBucket: "siteromania-7d517.firebasestorage.app",
+  messagingSenderId: "911808999395",
+  appId: "1:911808999395:web:6ef16d0a1dc8e508d87ad6",
+  measurementId: "G-E93VB9J6R3"
+};
+        };
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
 
-        // F4 - Панель
+        // --- ЛОГИКА ПАНЕЛИ ---
+        let isGov = false;
         window.addEventListener('keydown', (e) => {
             if (e.key === 'F4') {
-                if (!isGov) {
-                    let pass = prompt("Имя Правителя:");
-                    if (pass === "Грубан Виндин") {
-                        isGov = true;
-                        document.getElementById('gov-panel').style.display = 'block';
-                    } else { alert("Отказ в доступе."); }
-                } else { document.getElementById('gov-panel').style.display = 'block'; }
+                let pass = prompt("Имя Правителя:");
+                if (pass === "Грубан Виндин") { isGov = true; document.getElementById('gov-panel').style.display = 'block'; }
             }
-            if (e.key === 'Escape') closePanel();
         });
-
         function closePanel() { document.getElementById('gov-panel').style.display = 'none'; }
 
-        // Жалобы
-        function checkComplaint() {
+        // --- СИНХРОНИЗАЦИЯ С БАЗОЙ ---
+
+        // Загрузка постов
+        database.ref('posts').on('child_added', (snapshot) => {
+            const data = snapshot.val();
+            const html = `<div class="card"><h3>${data.title}</h3><p>${data.content}</p></div>`;
+            if(data.type === 'msg') document.getElementById('gov-messages').insertAdjacentHTML('afterbegin', html);
+            else document.getElementById('public-feed').insertAdjacentHTML('afterbegin', html);
+        });
+
+        // Закрепленный пост
+        database.ref('settings/pinned').on('value', (snapshot) => {
+            const val = snapshot.val();
+            const el = document.getElementById('pinned-post');
+            if(val) { el.innerText = val; el.style.display = 'block'; }
+            else { el.style.display = 'none'; }
+        });
+
+        // Ивенты для всех
+        database.ref('events/party').on('value', (snap) => {
+            document.body.classList.toggle('party-mode', snap.val() === true);
+        });
+
+        let emojiInt;
+        database.ref('events/emoji').on('value', (snap) => {
+            if(snap.val()) {
+                emojiInt = setInterval(() => {
+                    const e = document.createElement('div'); e.className = 'emoji'; e.innerText = '🇷🇴';
+                    e.style.left = Math.random() * 100 + "vw"; e.style.animationDuration = "3s";
+                    document.body.appendChild(e); setTimeout(() => e.remove(), 3000);
+                }, 300);
+            } else { clearInterval(emojiInt); }
+        });
+
+        // --- ФУНКЦИИ ЗАПИСИ ---
+        function dbPublish() {
+            if(!isGov) return;
+            const type = document.getElementById('pub-type').value;
+            const title = document.getElementById('pub-title').value;
+            const content = document.getElementById('pub-content').value;
+            if(type === 'pin') database.ref('settings/pinned').set(content);
+            else database.ref('posts').push({ type, title, content });
+            alert("Успешно опубликовано в общую базу!");
+        }
+
+        function dbToggleEvent(evType) {
+            if(!isGov) return;
+            const ref = database.ref('events/' + evType);
+            ref.once('value', (s) => ref.set(!s.val()));
+        }
+
+        function submitComplaint() {
             const text = document.getElementById('complaint-text').value;
-            const count = text.length;
-            const btn = document.getElementById('send-complaint');
-            document.getElementById('char-count').innerText = `Символов: ${count} / 125`;
-            btn.disabled = count < 125;
-        }
-
-        function sendComplaint() {
-            alert("Ваша жалоба принята и будет рассмотрена Г. Виндиным в ближайшее время.");
+            database.ref('complaints').push({ text, date: new Date().toLocaleString() });
+            alert("Жалоба сохранена в базе данных страны.");
             document.getElementById('complaint-text').value = "";
-            checkComplaint();
         }
 
-        // Покупка
+        // Вспомогательное
+        function checkComplaint() {
+            const val = document.getElementById('complaint-text').value;
+            document.getElementById('char-count').innerText = `${val.length} / 125`;
+            document.getElementById('send-complaint').disabled = val.length < 125;
+        }
+
         function updatePrice() {
-            const select = document.getElementById('buy-type');
-            const price = select.options[select.selectedIndex].getAttribute('data-price');
-            document.getElementById('total-price').innerText = price + " руб";
+            const sel = document.getElementById('buy-type');
+            document.getElementById('total-price').innerText = sel.options[sel.selectedIndex].getAttribute('data-price') + " руб";
         }
 
         function generateBuyCommand() {
             const type = document.getElementById('buy-type').value;
             const name = document.getElementById('buy-name').value;
-            const loc = document.getElementById('buy-loc').value;
-            
-            if(!name || !loc) { alert("Заполните название и местоположение!"); return; }
-            
-            const resultBox = document.getElementById('buy-result');
-            const command = `!buy${type} ; {${name}}`;
-            resultBox.innerText = `Скопируйте и отправьте в ТГ: \n${command}`;
-            resultBox.style.display = 'block';
-        }
-
-        // Публикация
-        function publish() {
-            const type = document.getElementById('pub-type').value;
-            const title = document.getElementById('pub-title').value;
-            const content = document.getElementById('pub-content').value;
-            if (type === 'pin') {
-                const pin = document.getElementById('pinned-post');
-                pin.innerText = content; pin.style.display = 'block';
-            } else if (type === 'msg') {
-                document.getElementById('gov-messages').insertAdjacentHTML('afterbegin', `<div class="card"><strong>📢 ${title}</strong><p>${content}</p></div>`);
-            } else {
-                document.getElementById('public-feed').insertAdjacentHTML('afterbegin', `<div class="card"><h3>${title}</h3><p>${content}</p></div>`);
-            }
-            alert("Опубликовано!");
-        }
-
-        // Ивенты
-        function toggleParty() { document.body.classList.toggle('party-mode'); }
-        function toggleEmoji() {
-            if (!emojiInterval) {
-                emojiInterval = setInterval(() => {
-                    const e = document.createElement('div');
-                    e.className = 'emoji'; e.innerText = '🇷🇴';
-                    e.style.left = Math.random() * 100 + "vw";
-                    e.style.animationDuration = Math.random() * 2 + 3 + "s";
-                    document.body.appendChild(e);
-                    setTimeout(() => e.remove(), 5000);
-                }, 300);
-            } else { clearInterval(emojiInterval); emojiInterval = null; }
+            const cmd = `!buy${type} ; {${name}}`;
+            const res = document.getElementById('buy-result');
+            res.innerText = "Отправьте @roman_egoroff: " + cmd;
+            res.style.display = "block";
         }
     </script>
 </body>
